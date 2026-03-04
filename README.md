@@ -47,7 +47,7 @@ This project leverages [**MongoDB Atlas Vector Search**](https://www.mongodb.com
 
 - **Guideline Retrieval:** Vector-based search for relevant insurance guidelines based on accident descriptions  
 - **Persistent State Management:** Store claim data, chat history, and agent states in MongoDB with full audit trails  
-- **Vector-Powered Policy Retrieval:** Semantic search through insurance guidelines using [Cohere embeddings](https://docs.cohere.com/docs/embeddings) with cosine similarity  
+- **Vector-Powered Policy Retrieval:** Semantic search through insurance guidelines using OpenAI embeddings with cosine similarity  
 - **Flexible Data Storage:** MongoDB's document structure handles dynamic claim data and evolving workflows
 
 ---
@@ -64,10 +64,9 @@ This project leverages [**MongoDB Atlas Vector Search**](https://www.mongodb.com
 
 - **[LangChain](https://python.langchain.com/docs/):** Framework for developing applications with language models  
 - **[LangGraph](https://langchain-ai.github.io/langgraph/):** Library for building stateful, multi-actor agentic applications  
-- **[AWS Bedrock](https://aws.amazon.com/bedrock/):** Managed service for foundation models  
-- **Claude 3 Haiku:** [anthropic.claude-3-haiku-20240307-v1:0](https://docs.anthropic.com/claude/docs/models-overview) – Fast agent orchestration and reasoning  
-- **Claude 3 Sonnet:** [anthropic.claude-3-sonnet-20240229-v1:0](https://docs.anthropic.com/claude/docs/models-overview) – Advanced multi-modal image analysis  
-- **Cohere English V3:** [cohere.embed-english-v3](https://docs.cohere.com/docs/embeddings) – Text embeddings for vector search
+- **[OpenAI API](https://platform.openai.com/docs/overview):** LLM, vision, and embedding inference provider  
+- **GPT-4o mini:** Fast multimodal model for agent orchestration and image understanding  
+- **text-embedding-3-large:** Embeddings model for vector search
 
 ### Database & Vector Search
 
@@ -102,13 +101,17 @@ This project leverages [**MongoDB Atlas Vector Search**](https://www.mongodb.com
     - `policy_documents` – For insurance guidelines and policies (with vector embeddings)
 3. **Set up MongoDB Vector Search Index for the `policy_documents` collection:**
 
+> `numDimensions` must match your selected embedding model:
+> - `text-embedding-3-small` -> `1536`
+> - `text-embedding-3-large` -> `3072` (default in this repo)
+
 ```json
 {
   "fields": [
     {
       "type": "vector",
       "path": "descriptionEmbedding",
-      "numDimensions": 1024,
+      "numDimensions": 3072,
       "similarity": "cosine"
     }
   ]
@@ -117,15 +120,14 @@ This project leverages [**MongoDB Atlas Vector Search**](https://www.mongodb.com
 
 ---
 
-### Step 1: Configure AWS Account
+### Step 1: Configure AI Provider (OpenAI)
 
-- Create an [AWS account](https://portal.aws.amazon.com/billing/signup) if you don't have one  
-- Add the AWS Access Key ID and Secret Access Key to your environment variables  
-- Grant the necessary permissions to the AWS account: `AmazonBedrockFullAccess`  
-- Ensure the required [Bedrock models](https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html) are available in your region:  
-    - `anthropic.claude-3-haiku-20240307-v1:0` (for agent orchestration)  
-    - `anthropic.claude-3-sonnet-20240229-v1:0` (for image analysis)  
-    - `cohere.embed-english-v3` (for text embeddings)  
+- Create an [OpenAI API key](https://platform.openai.com/api-keys)  
+- Add `OPENAI_API_KEY` to your environment variables  
+- Optionally configure model overrides:
+    - `LLM_MODEL` (default: `gpt-4o-mini`)  
+    - `VISION_MODEL` (default: `gpt-4o-mini`)  
+    - `EMBEDDING_MODEL` (default: `text-embedding-3-large`)  
 
 ---
 
@@ -149,8 +151,11 @@ cd insurance-claim-agent
 Create a `.env` file in the root directory:
 
 ```dotenv
-# AWS Configuration
-AWS_DEFAULT_REGION=us-east-1
+# OpenAI Configuration
+OPENAI_API_KEY=""
+LLM_MODEL=gpt-4o-mini
+VISION_MODEL=gpt-4o-mini
+EMBEDDING_MODEL=text-embedding-3-large
 
 # MongoDB Configuration
 MONGODB_URI=""
@@ -158,9 +163,6 @@ DATABASE_NAME=insurance_claims
 COLLECTION_NAME=policy_documents
 COLLECTION_NAME_2=processed_claims
 CHAT_HISTORY_COLLECTION=chat_history
-
-# Bedrock Configuration
-BEDROCK_REGION=us-east-1
 
 # Frontend Configuration
 NEXT_PUBLIC_IMAGE_DESCRIPTOR_API_URL=http://localhost:8000/imageDescriptor
@@ -178,6 +180,52 @@ make build
 - Frontend UI: [http://localhost:3000](http://localhost:3000)
 - Backend API: [http://localhost:8000](http://localhost:8000)
 - API Documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## Deploy to Railway
+
+Yes — you can host both the frontend and backend on [Railway](https://railway.app/) with no AWS dependency in this setup.
+
+> **Important:** this project now uses OpenAI models for chat, vision, and embeddings.
+
+### Recommended Railway Setup (2 services)
+
+Create two Railway services from the same repo:
+
+1. **Backend service**
+   - Deploy from `Dockerfile.backend`
+   - Expose port `8080`
+   - Add environment variables:
+     - `OPENAI_API_KEY`
+     - `LLM_MODEL` (optional, default `gpt-4o-mini`)
+     - `VISION_MODEL` (optional, default `gpt-4o-mini`)
+     - `EMBEDDING_MODEL` (optional, default `text-embedding-3-large`)
+     - `MONGODB_URI`
+     - `DATABASE_NAME`
+     - `COLLECTION_NAME`
+     - `COLLECTION_NAME_2`
+     - `CHAT_HISTORY_COLLECTION`
+
+2. **Frontend service**
+   - Deploy from `Dockerfile.frontend`
+   - Expose port `8080` (container port)
+   - Add environment variables:
+     - `NEXT_PUBLIC_IMAGE_DESCRIPTOR_API_URL=https://<your-backend-domain>/imageDescriptor`
+     - `NEXT_PUBLIC_RUN_AGENT_API_URL=https://<your-backend-domain>/runAgent`
+     - `NEXT_PUBLIC_API_BASE=https://<your-backend-domain>` (optional fallback)
+
+### Full step-by-step deployment
+
+For a complete Railway checklist (MongoDB preparation, env templates, deploy validation, and troubleshooting), see:
+
+- [`docs/RAILWAY_DEPLOYMENT.md`](docs/RAILWAY_DEPLOYMENT.md)
+
+### Notes for Production
+
+- Use Railway's generated backend URL in the two `NEXT_PUBLIC_*` frontend variables.
+- Keep MongoDB Atlas network access open to Railway egress IPs (or temporarily allow `0.0.0.0/0` with strict DB user permissions).
+- No AWS credentials are required for this deployment path.
 
 ---
 
@@ -237,8 +285,11 @@ poetry install
 Create a `.env` file in the `backend` directory:
 
 ```dotenv
-# AWS Configuration
-AWS_DEFAULT_REGION=us-east-1
+# OpenAI Configuration
+OPENAI_API_KEY=""
+LLM_MODEL=gpt-4o-mini
+VISION_MODEL=gpt-4o-mini
+EMBEDDING_MODEL=text-embedding-3-large
 
 # MongoDB Configuration
 MONGODB_URI=""
@@ -247,8 +298,6 @@ COLLECTION_NAME=policy_documents
 COLLECTION_NAME_2=processed_claims
 CHAT_HISTORY_COLLECTION=chat_history
 
-# Bedrock Configuration
-BEDROCK_REGION=us-east-1
 ```
 
 Start the backend server.
@@ -316,14 +365,13 @@ Refer to the Makefile itself or run `make help` for a full list and description 
 #### Docker Issues
 
 - Ensure Docker Desktop is running before using Make commands
-- Check that AWS credentials are properly mounted in containers
+- Check that `OPENAI_API_KEY` is set correctly in your environment
 - Verify that ports `3000` and `8000` are not in use by other applications
 
-#### AWS Bedrock Access
+#### OpenAI Access
 
-- Ensure your AWS credentials have Bedrock permissions for all three models
-- Verify Claude and Cohere models are available in your specified region
-- Check that your AWS account has been granted access to required models
+- Ensure `OPENAI_API_KEY` is valid and has access to your selected models
+- Verify `LLM_MODEL`, `VISION_MODEL`, and `EMBEDDING_MODEL` names are correct
 
 #### MongoDB Connection
 

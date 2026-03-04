@@ -1,5 +1,5 @@
 from langchain.agents import tool
-from embeddings.bedrock.getters import get_embedding_model
+from embeddings.getters import get_embedding_model
 from agent_vector_store import create_vector_store
 from pymongo import MongoClient
 from datetime import datetime
@@ -20,7 +20,7 @@ logging.basicConfig(
 
 INDEX_NAME = "description_index" 
 
-embedding_model = get_embedding_model(model_id="cohere.embed-english-v3")
+embedding_model = get_embedding_model(model_id=os.getenv("EMBEDDING_MODEL", "text-embedding-3-large"))
 
 vector_store = create_vector_store(
         cluster_uri=os.getenv("MONGODB_URI"),
