@@ -213,13 +213,6 @@ Create two Railway services from the same repo:
    - Add environment variables:
      - `NEXT_PUBLIC_IMAGE_DESCRIPTOR_API_URL=https://<your-backend-domain>/imageDescriptor`
      - `NEXT_PUBLIC_RUN_AGENT_API_URL=https://<your-backend-domain>/runAgent`
-     - `NEXT_PUBLIC_API_BASE=https://<your-backend-domain>` (optional fallback)
-
-### Full step-by-step deployment
-
-For a complete Railway checklist (MongoDB preparation, env templates, deploy validation, and troubleshooting), see:
-
-- [`docs/RAILWAY_DEPLOYMENT.md`](docs/RAILWAY_DEPLOYMENT.md)
 
 ### Notes for Production
 
