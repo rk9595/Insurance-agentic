@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import os
 from tempfile import NamedTemporaryFile
 from typing import Optional
-from pic2textApi import stream_image_to_bedrock
+from pic2textApi import stream_image_description
 from insurance_agent import insurance_agent
 from bson import ObjectId
 import logging
@@ -40,7 +40,7 @@ async def read_root(request: Request):
 @app.post("/imageDescriptor")
 async def analyze_image(
     file: UploadFile = File(...),
-    model_id: Optional[str] = 'anthropic.claude-3-sonnet-20240229-v1:0',
+    model_id: Optional[str] = os.getenv('VISION_MODEL', 'gpt-4o-mini'),
     prompt: Optional[str] = "What do you see in this image? Give a concise description and focus and what happened to vehicles."
 ):
     global image_description  # Use the global variable
@@ -63,7 +63,7 @@ async def analyze_image(
             global image_description
             try:
                 # Collect the full description
-                for chunk in stream_image_to_bedrock(temp_file_path, model_id):
+                for chunk in stream_image_description(temp_file_path, model_id, prompt):
                     image_description += chunk
                     yield chunk
                 

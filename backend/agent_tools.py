@@ -1,5 +1,5 @@
 from langchain.agents import tool
-from embeddings.bedrock.getters import get_embedding_model
+from embeddings.getters import get_embedding_model
 from agent_vector_store import create_vector_store
 from pymongo import MongoClient
 from datetime import datetime
@@ -20,7 +20,7 @@ logging.basicConfig(
 
 INDEX_NAME = "description_index" 
 
-embedding_model = get_embedding_model(model_id="cohere.embed-english-v3")
+embedding_model = get_embedding_model(model_id=os.getenv("EMBEDDING_MODEL", "text-embedding-3-large"))
 
 vector_store = create_vector_store(
         cluster_uri=os.getenv("MONGODB_URI"),
@@ -35,8 +35,15 @@ vector_store = create_vector_store(
 @tool
 def fetch_guidelines(query: str, n=1) -> str:
     """Runs semantic search on existing policies to find relevant ones based on the image description."""
-    result = vector_store.similarity_search_with_score(query=query, k=n) 
+    result = vector_store.similarity_search_with_score(query=query, k=n)
     print("Vector store - Similarity Search Raw: ", result)
+
+    if not result:
+        return (
+            "No matching policy guidelines were found in the vector store. "
+            "Proceed with a cautious recommendation and request manual policy review."
+        )
+
     print("Vector store - Similarity Search Partial: ", str(result[0][0].page_content))
     return str(result[0][0].page_content)
 
