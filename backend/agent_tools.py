@@ -35,8 +35,15 @@ vector_store = create_vector_store(
 @tool
 def fetch_guidelines(query: str, n=1) -> str:
     """Runs semantic search on existing policies to find relevant ones based on the image description."""
-    result = vector_store.similarity_search_with_score(query=query, k=n) 
+    result = vector_store.similarity_search_with_score(query=query, k=n)
     print("Vector store - Similarity Search Raw: ", result)
+
+    if not result:
+        return (
+            "No matching policy guidelines were found in the vector store. "
+            "Proceed with a cautious recommendation and request manual policy review."
+        )
+
     print("Vector store - Similarity Search Partial: ", str(result[0][0].page_content))
     return str(result[0][0].page_content)
 
