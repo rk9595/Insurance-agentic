@@ -101,13 +101,17 @@ This project leverages [**MongoDB Atlas Vector Search**](https://www.mongodb.com
     - `policy_documents` – For insurance guidelines and policies (with vector embeddings)
 3. **Set up MongoDB Vector Search Index for the `policy_documents` collection:**
 
+> `numDimensions` must match your selected embedding model:
+> - `text-embedding-3-small` -> `1536`
+> - `text-embedding-3-large` -> `3072` (default in this repo)
+
 ```json
 {
   "fields": [
     {
       "type": "vector",
       "path": "descriptionEmbedding",
-      "numDimensions": 1024,
+      "numDimensions": 3072,
       "similarity": "cosine"
     }
   ]
